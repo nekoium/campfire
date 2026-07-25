@@ -107,8 +107,3 @@ Campfire starts from the belief that crypto is not automatically good or bad. It
 If a system begins as pure speculation, it tends to reward extraction, status games, and competition for control. If it begins as shared work, mutual aid, and a clear local social fabric, the chain can become a useful coordination tool instead.
 
 The point is not to make everything financial. The point is to make the social agreement durable enough that people can rely on it.
-
-## Notes
-
-- Temporary repo folder: `Projects/Development/commons`
-- This is a concept and vision draft, not a final spec
