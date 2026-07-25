@@ -10,6 +10,7 @@ import { CreateTaskForm } from "./CreateTaskForm";
 import { TransferForm } from "./TransferForm";
 import { BalancePanel } from "./BalancePanel";
 import { HistoryPanel } from "./HistoryPanel";
+import { DeployContract } from "./DeployContract";
 
 interface BoardProps {
   toasts: ToastApi;
@@ -23,7 +24,7 @@ interface BoardProps {
 export function Board({ toasts }: BoardProps) {
   const { address, isConnected } = useAccount();
   const correctChain = useIsCorrectChain();
-  const configured = isContractConfigured();
+  const [configured] = useState(isContractConfigured());
   const [refreshKey, setRefreshKey] = useState(0);
 
   const bump = () => setRefreshKey((k) => k + 1);
@@ -48,12 +49,14 @@ export function Board({ toasts }: BoardProps) {
           </div>
 
           {!configured && (
-            <div className="callout callout--warning" style={{ marginBottom: "var(--space-4)" }}>
-              <div className="callout__title">Contract not deployed</div>
-              <code>CAMPFIRE_CONTRACT_ADDRESS</code> in <code>src/config.ts</code> is still
-              the placeholder. Deploy <code>contracts/CampfireCommunity.sol</code> to{" "}
-              {monadTestnet.name} and paste the address into the config.
-            </div>
+            <DeployContract
+              toasts={toasts}
+              onDeployed={() => {
+                // Reload the page so the new address from localStorage is
+                // picked up by every component and wagmi hook uniformly.
+                window.location.reload();
+              }}
+            />
           )}
 
           {configured && isConnected && !correctChain && (

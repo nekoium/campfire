@@ -38,10 +38,20 @@ export function WalletBar({ toasts }: WalletBarProps) {
     query: { enabled: !!address },
   });
 
-  // Pick the injected connector (Rabby/MetaMask expose themselves as this).
-  // If multiInjectedProviderDiscovery is on, wagmi may surface several — we
-  // just take the first one. That's enough for the MVP.
-  const injected = connectors.find((c) => c.type === "injected");
+  // Pick the best available connector. Prefer the metaMask connector (which
+  // uses EIP-6963 and detects Rabby), fall back to any injected connector,
+  // fall back to any other connector (e.g. EIP-6963-discovered wallets).
+  const connector =
+    connectors.find((c) => c.type === "metaMask") ??
+    connectors.find((c) => c.type === "injected") ??
+    connectors[0];
+
+  // Also detect window.ethereum directly as a last-resort signal for the
+  // "no wallet detected" hint. Some wallets inject late and wagmi's
+  // connectors haven't picked them up yet at click time.
+  const hasWindowEthereum =
+    typeof window !== "undefined" &&
+    !!(window as unknown as { ethereum?: unknown }).ethereum;
 
   const dotClass = !isConnected
     ? ""
@@ -60,29 +70,50 @@ export function WalletBar({ toasts }: WalletBarProps) {
         : "Connected";
 
   async function handleConnect() {
-    if (!injected) {
+    if (!connector) {
       setShowNoWalletHint(true);
       toasts.push({
         kind: "warning",
         title: "No wallet detected",
-        message:
-          "Install Rabby or MetaMask, then refresh. The app talks to the wallet via the EIP-1193 standard.",
+        message: hasWindowEthereum
+          ? "A wallet was detected but wagmi hasn't loaded it yet. Refresh the page and try again."
+          : "Install Rabby or MetaMask, then refresh. The app talks to the wallet via the EIP-1193 standard.",
       });
       return;
     }
     try {
-      await connectAsync({ connector: injected });
+      await connectAsync({ connector });
       toasts.push({ kind: "success", title: "Wallet connected" });
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
       const isRejection = /rejected|denied|user rejected|4001/i.test(reason);
-      toasts.push({
-        kind: isRejection ? "info" : "danger",
-        title: isRejection ? "Connection rejected" : "Connection failed",
-        message: isRejection
-          ? "You closed the wallet prompt. Click Connect again when ready."
-          : reason,
-      });
+      const isProviderMissing = /provider not found/i.test(reason);
+      if (isProviderMissing && hasWindowEthereum) {
+        // Wagmi's connector didn't pick up the provider at setup time but
+        // window.ethereum exists now. A page reload lets wagmi re-scan.
+        toasts.push({
+          kind: "warning",
+          title: "Wallet not picked up yet",
+          message:
+            "A wallet extension is present but wagmi didn't detect it. Please refresh the page and click Connect again.",
+        });
+      } else if (isProviderMissing) {
+        setShowNoWalletHint(true);
+        toasts.push({
+          kind: "warning",
+          title: "No wallet detected",
+          message:
+            "Install Rabby or MetaMask, then refresh. The app talks to the wallet via the EIP-1193 standard.",
+        });
+      } else {
+        toasts.push({
+          kind: isRejection ? "info" : "danger",
+          title: isRejection ? "Connection rejected" : "Connection failed",
+          message: isRejection
+            ? "You closed the wallet prompt. Click Connect again when ready."
+            : reason,
+        });
+      }
     }
   }
 
@@ -152,7 +183,7 @@ export function WalletBar({ toasts }: WalletBarProps) {
           >
             {connectPending ? "Opening wallet…" : "Connect wallet"}
           </button>
-          {showNoWalletHint && !injected && (
+          {showNoWalletHint && !connector && (
             <span className="walletbar__hint tiny">
               No EIP-1193 wallet found. Install{" "}
               <a
