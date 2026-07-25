@@ -85,7 +85,9 @@ The contract should contain:
 
 ### Community entity
 
-For the MVP, the deployer represents the community entity. The address is public and all privileged actions emit events. A later version can replace the deployer with a multisig or community governance contract.
+Campfire supports multiple independent communities. In each one, the community entity is a distinct on-chain account that is also a member of that community group alongside ordinary members.
+
+For the MVP, the deployer controls this entity account. It has explicit additional permissions: invite or remove members, approve work where appropriate, and operate the local-credit rules. Each privileged action emits an event and remains traceable on chain. A later version can replace the deployer-controlled entity with a multisig or community governance contract without moving the entity outside the group.
 
 ### Membership
 

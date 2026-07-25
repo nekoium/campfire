@@ -21,14 +21,14 @@ In practice, an offer or request is not assigned a purely fixed price. It is neg
 
 ## Community Model
 
-There are two meanings of community in Campfire:
+Campfire supports multiple independent communities. Each community has two connected layers:
 
-- **community as the group**: the people who participate, help, request, approve, and observe
-- **community as the on-chain entity**: the official community identity represented in contracts and records
+- **community as a group**: an invite-only group in the Campfire system. Members can join it, make requests and offers, claim work, receive credits, and exchange credits with other members of that same group.
+- **community as an entity-member**: a distinct on-chain account that belongs to the group alongside ordinary members. It represents the community's official role, but it is still a member inside the same community rather than an invisible administrator outside it.
 
-The second meaning exists inside the first. This preserves a flatter hierarchy because the authority itself is visible, traceable, and historically accountable on chain.
+The entity-member has additional, explicitly defined permissions in the first prototype, such as inviting members, issuing local credits through approved work, removing members, and triggering the public credit-revocation rule. Its actions are recorded and traceable in the same way as every other member action.
 
-A community official or council is not hidden behind private admin logic. Their historical actions can be seen as part of the public record of the community entity.
+This model keeps authority visible and bounded. The community entity can exercise necessary operational powers, but it cannot disappear into private backend logic: its history, permissions, and actions remain part of the community's public record.
 
 ## Currency Creation and Disposal
 
