@@ -5,6 +5,7 @@ import { isContractConfigured } from "../contract";
 
 interface IntroProps {
   onEnter: () => void;
+  onEnterDemo: () => void;
 }
 
 /**
@@ -12,7 +13,7 @@ interface IntroProps {
  * hero image + community name + statement of purpose + path into the board +
  * quiet Monad Testnet indicator.
  */
-export function Intro({ onEnter }: IntroProps) {
+export function Intro({ onEnter, onEnterDemo }: IntroProps) {
   const { isConnected } = useAccount();
   const correctChain = useIsCorrectChain();
   const configured = isContractConfigured();
@@ -52,6 +53,13 @@ export function Intro({ onEnter }: IntroProps) {
           <div className="hero__actions">
             <button className="btn btn--primary" onClick={onEnter}>
               Enter the board →
+            </button>
+            <button
+              className="btn btn--ghost"
+              onClick={onEnterDemo}
+              style={{ marginLeft: "var(--space-3)" }}
+            >
+              Try demo (no wallet)
             </button>
             <span className="hero__chain-note">
               Recorded on {monadTestnet.name} (chain id {monadTestnet.id})

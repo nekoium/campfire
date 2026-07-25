@@ -9,6 +9,7 @@ import {
 } from "viem";
 import { contractAddress } from "../contract";
 import { formatRelative, shortAddress, formatCredits } from "../lib/format";
+import { DEMO_HISTORY } from "../lib/demoData";
 
 interface HistoryEntry {
   kind: string;
@@ -32,20 +33,30 @@ const EVENT_ITEMS = [
 
 interface HistoryPanelProps {
   refreshKey: number;
+  demoMode?: boolean;
 }
 
 /**
  * Pulls recent contract events via eth_getLogs and renders a short
  * contribution ledger. For MVP we fetch a wide block window; a production
  * app would use an indexer (see TECH_STACK.md P2).
+ *
+ * In demo mode, renders placeholder history entries instead of hitting the
+ * RPC.
  */
-export function HistoryPanel({ refreshKey }: HistoryPanelProps) {
+export function HistoryPanel({ refreshKey, demoMode = false }: HistoryPanelProps) {
   const client = usePublicClient();
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (demoMode) {
+      setEntries(DEMO_HISTORY);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     let cancelled = false;
     async function load() {
       if (!client) return;
@@ -114,13 +125,13 @@ export function HistoryPanel({ refreshKey }: HistoryPanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [client, refreshKey]);
+  }, [client, refreshKey, demoMode]);
 
   return (
     <section className="panel">
       <div className="panel__head">
         <h3 className="panel__title">Contribution ledger</h3>
-        <span className="panel__hint">recent</span>
+        <span className="panel__hint">{demoMode ? "demo" : "recent"}</span>
       </div>
 
       {loading && <div className="state">Reading chain history…</div>}

@@ -12,6 +12,7 @@ type View = "intro" | "board";
 
 export default function App() {
   const [view, setView] = useState<View>("intro");
+  const [demoMode, setDemoMode] = useState(false);
   const toasts = useToasts();
 
   return (
@@ -19,7 +20,10 @@ export default function App() {
       <header className="topbar">
         <button
           className="topbar__brand"
-          onClick={() => setView("intro")}
+          onClick={() => {
+            setView("intro");
+            setDemoMode(false);
+          }}
           style={{
             background: "transparent",
             border: 0,
@@ -36,17 +40,31 @@ export default function App() {
           <span className="topbar__chain-tag">{monadTestnet.name}</span>
           <WalletBar toasts={toasts} />
           {view === "intro" && (
-            <button
-              className="btn btn--ghost btn--small"
-              onClick={() => setView("board")}
-            >
-              Board →
-            </button>
+            <>
+              <button
+                className="btn btn--ghost btn--small"
+                onClick={() => {
+                  setDemoMode(true);
+                  setView("board");
+                }}
+              >
+                Try demo
+              </button>
+              <button
+                className="btn btn--ghost btn--small"
+                onClick={() => setView("board")}
+              >
+                Board →
+              </button>
+            </>
           )}
           {view === "board" && (
             <button
               className="btn btn--ghost btn--small"
-              onClick={() => setView("intro")}
+              onClick={() => {
+                setView("intro");
+                setDemoMode(false);
+              }}
             >
               About
             </button>
@@ -55,8 +73,22 @@ export default function App() {
       </header>
 
       <main>
-        {view === "intro" && <Intro onEnter={() => setView("board")} />}
-        {view === "board" && <Board toasts={toasts} />}
+        {view === "intro" && (
+          <Intro
+            onEnter={() => setView("board")}
+            onEnterDemo={() => {
+              setDemoMode(true);
+              setView("board");
+            }}
+          />
+        )}
+        {view === "board" && (
+          <Board
+            toasts={toasts}
+            demoMode={demoMode}
+            onExitDemo={() => setDemoMode(false)}
+          />
+        )}
       </main>
 
       <footer className="footer">

@@ -7,11 +7,18 @@ import type { TaskRow } from "../abi";
 import type { ToastApi } from "../lib/useToasts";
 import { TxPill } from "./CreateTaskForm";
 import type { Address } from "viem";
+import {
+  DEMO_TASKS,
+  DEMO_TOTAL_TASKS,
+  DEMO_COMMUNITY_ENTITY,
+  DEMO_VIEWER_ADDRESS,
+} from "../lib/demoData";
 
 interface TaskListProps {
   toasts: ToastApi;
   /** Bump this number to trigger a refetch after a write succeeds. */
   refreshKey: number;
+  demoMode?: boolean;
 }
 
 const STATUS_LABELS: Record<number, string> = {
@@ -26,18 +33,19 @@ const STATUS_LABELS: Record<number, string> = {
  * Flat editorial list of tasks. Loads up to the most recent 30 tasks by
  * reading taskCount then getTask for each id. No nested cards.
  */
-export function TaskList({ toasts, refreshKey }: TaskListProps) {
+export function TaskList({ toasts, refreshKey, demoMode = false }: TaskListProps) {
   const { address } = useAccount();
 
   const { data: countRaw, isLoading: countLoading } = useCampfireRead(
     "taskCount",
     [],
+    !demoMode,
   );
-  const count = countRaw ? Number(countRaw) : 0;
+  const count = demoMode ? Number(DEMO_TOTAL_TASKS) : countRaw ? Number(countRaw) : 0;
 
   // Build a batch of getTask calls for the most recent 30 ids.
   const calls = useMemo(() => {
-    if (count === 0) return [];
+    if (demoMode || count === 0) return [];
     const limit = Math.min(count, 30);
     const start = count - limit + 1;
     return Array.from({ length: limit }, (_, i) => {
@@ -49,7 +57,7 @@ export function TaskList({ toasts, refreshKey }: TaskListProps) {
         args: [id],
       };
     });
-  }, [count]);
+  }, [count, demoMode]);
 
   const { data, isLoading, refetch, isFetching } = useReadContracts({
     contracts: calls,
@@ -60,25 +68,32 @@ export function TaskList({ toasts, refreshKey }: TaskListProps) {
 
   // Refetch when refreshKey changes (after a successful write).
   useEffect(() => {
-    if (refreshKey > 0) refetch();
-  }, [refreshKey, refetch]);
+    if (refreshKey > 0 && !demoMode) refetch();
+  }, [refreshKey, refetch, demoMode]);
 
-  const { data: communityEntityRaw } = useCampfireRead("communityEntity", []);
-  const communityEntity = communityEntityRaw as Address | undefined;
+  const { data: communityEntityRaw } = useCampfireRead(
+    "communityEntity",
+    [],
+    !demoMode,
+  );
+  const communityEntity = demoMode
+    ? DEMO_COMMUNITY_ENTITY
+    : (communityEntityRaw as Address | undefined);
 
   const tx = useTx();
   const busy =
     tx.status.state === "awaiting-approval" || tx.status.state === "pending";
 
   const tasks: TaskRow[] = useMemo(() => {
+    if (demoMode) return DEMO_TASKS;
     if (!data) return [];
     return data
       .map((r) => r.result as TaskRow | undefined)
       .filter((t): t is TaskRow => !!t && t.id !== 0n)
       .sort((a, b) => Number(b.id - a.id));
-  }, [data]);
+  }, [data, demoMode]);
 
-  if (countLoading || isLoading) {
+  if (!demoMode && (countLoading || isLoading)) {
     return (
       <section className="panel">
         <div className="panel__head">
@@ -111,6 +126,15 @@ export function TaskList({ toasts, refreshKey }: TaskListProps) {
     args: readonly unknown[],
     successTitle: string,
   ) => {
+    if (demoMode) {
+      toasts.push({
+        kind: "info",
+        title: "Demo mode",
+        message:
+          "Connect a wallet and deploy the contract to perform real actions.",
+      });
+      return;
+    }
     if (busy) return;
     await tx.run({
       functionName,
@@ -124,12 +148,16 @@ export function TaskList({ toasts, refreshKey }: TaskListProps) {
     }
   };
 
+  // In demo mode, the viewer "is" the demo address.
+  const viewerAddress = demoMode ? DEMO_VIEWER_ADDRESS : address;
+
   return (
     <section className="panel panel--bare">
       <div className="panel__head" style={{ padding: "var(--space-5) var(--space-5) 0" }}>
         <h3 className="panel__title">Activity</h3>
         <span className="panel__hint">
-          {tasks.length} shown · {count} total{isFetching ? " · refreshing" : ""}
+          {tasks.length} shown · {count} total
+          {!demoMode && isFetching ? " · refreshing" : ""}
         </span>
       </div>
 
@@ -137,20 +165,22 @@ export function TaskList({ toasts, refreshKey }: TaskListProps) {
         {tasks.map((t) => {
           const status = t.status;
           const viewerIsCreator =
-            !!address && t.creator.toLowerCase() === address.toLowerCase();
+            !!viewerAddress &&
+            t.creator.toLowerCase() === viewerAddress.toLowerCase();
           const viewerIsClaimant =
-            !!address && t.claimant.toLowerCase() === address.toLowerCase();
+            !!viewerAddress &&
+            t.claimant.toLowerCase() === viewerAddress.toLowerCase();
           const viewerIsCommunityEntity =
-            !!address &&
+            !!viewerAddress &&
             !!communityEntity &&
-            address.toLowerCase() === communityEntity.toLowerCase();
+            viewerAddress.toLowerCase() === communityEntity.toLowerCase();
           const canApprove =
             (viewerIsCreator || viewerIsCommunityEntity) && status === 2;
           const canCancel =
             (viewerIsCreator || viewerIsCommunityEntity) &&
             (status === 0 || status === 1);
           const canClaim =
-            !!address &&
+            !!viewerAddress &&
             status === 0 &&
             !viewerIsCreator;
           const canSubmit = viewerIsClaimant && status === 1;
@@ -248,10 +278,16 @@ export function TaskList({ toasts, refreshKey }: TaskListProps) {
           alignItems: "center",
         }}
       >
-        <TxPill status={tx.status} />
-        <button className="btn btn--ghost btn--small" onClick={() => refetch()}>
-          Refresh
-        </button>
+        {demoMode ? (
+          <span className="tiny muted">Demo mode — actions disabled</span>
+        ) : (
+          <TxPill status={tx.status} />
+        )}
+        {!demoMode && (
+          <button className="btn btn--ghost btn--small" onClick={() => refetch()}>
+            Refresh
+          </button>
+        )}
       </div>
     </section>
   );

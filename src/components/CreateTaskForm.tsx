@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useAccount } from "wagmi";
-import { useCampfireRead, useTx } from "../lib/useCampfire";
+import { useTx } from "../lib/useCampfire";
 import { parseCredits } from "../lib/format";
 import { TASK_KIND } from "../abi";
 import type { ToastApi } from "../lib/useToasts";
@@ -8,18 +7,22 @@ import type { ToastApi } from "../lib/useToasts";
 interface CreateTaskFormProps {
   toasts: ToastApi;
   onCreated?: () => void;
+  demoMode?: boolean;
 }
 
 /**
  * Inline form to create a new task. Rejects empty descriptions or zero
  * rewards client-side to avoid pointless wallet prompts (DESIGN.md error
  * prevention: block invalid actions before opening the wallet).
+ *
+ * In demo mode the form is interactive but never sends a transaction —
+ * clicking submit shows a toast explaining how to enable real posting.
  */
-export function CreateTaskForm({ toasts, onCreated }: CreateTaskFormProps) {
-  const { address } = useAccount();
-  const { data: isMemberRaw } = useCampfireRead("isMember", [address ?? "0x0"], !!address);
-  const isMember = !!isMemberRaw;
-
+export function CreateTaskForm({
+  toasts,
+  onCreated,
+  demoMode = false,
+}: CreateTaskFormProps) {
   const [description, setDescription] = useState("");
   const [reward, setReward] = useState("");
   const [kind, setKind] = useState<number>(TASK_KIND.Request);
@@ -33,20 +36,16 @@ export function CreateTaskForm({ toasts, onCreated }: CreateTaskFormProps) {
   const busy =
     tx.status.state === "awaiting-approval" || tx.status.state === "pending";
 
-  if (!isMember) {
-    return (
-      <section className="panel">
-        <div className="panel__head">
-          <h3 className="panel__title">Post to the board</h3>
-        </div>
-        <p className="state__hint">
-          Only invited members can post requests or offers.
-        </p>
-      </section>
-    );
-  }
-
   const submit = async () => {
+    if (demoMode) {
+      toasts.push({
+        kind: "info",
+        title: "Demo mode",
+        message:
+          "Connect a wallet and deploy the contract to post real tasks.",
+      });
+      return;
+    }
     if (!valid || busy) return;
     await tx.run({
       functionName: "createTask",
@@ -116,13 +115,17 @@ export function CreateTaskForm({ toasts, onCreated }: CreateTaskFormProps) {
             flexWrap: "wrap",
           }}
         >
-          <TxPill status={tx.status} />
+          {demoMode ? (
+            <span className="tiny muted">Demo mode — posting disabled</span>
+          ) : (
+            <TxPill status={tx.status} />
+          )}
           <button
             className="btn btn--primary"
-            disabled={!valid || busy}
+            disabled={demoMode ? !valid : !valid || busy}
             onClick={submit}
           >
-            {busy ? "Confirming…" : "Post task"}
+            {demoMode ? "Preview task" : busy ? "Confirming…" : "Post task"}
           </button>
         </div>
       </div>
@@ -131,7 +134,11 @@ export function CreateTaskForm({ toasts, onCreated }: CreateTaskFormProps) {
 }
 
 /** Re-exported so other forms can share the same look. */
-export function TxPill({ status }: { status: ReturnType<typeof useTx>["status"] }) {
+export function TxPill({
+  status,
+}: {
+  status: ReturnType<typeof useTx>["status"];
+}) {
   if (status.state === "idle") return <span />;
   const map: Record<string, string> = {
     "awaiting-approval": "Confirm in wallet",

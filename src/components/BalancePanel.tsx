@@ -4,10 +4,15 @@ import { formatCredits, formatSecondsLeft } from "../lib/format";
 import { useTx } from "../lib/useCampfire";
 import type { ToastApi } from "../lib/useToasts";
 import { EXPLORERS } from "../config";
+import {
+  DEMO_BALANCE,
+  DEMO_VIEWER_ADDRESS,
+} from "../lib/demoData";
 
 interface BalancePanelProps {
   toasts: ToastApi;
   onAfterAction?: () => void;
+  demoMode?: boolean;
 }
 
 /**
@@ -15,20 +20,33 @@ interface BalancePanelProps {
  * the MON gas balance shown in WalletBar. Also surfaces the expiry rule:
  * "expires in Xd Yh" or "eligible for revocation" with a public trigger.
  */
-export function BalancePanel({ toasts, onAfterAction }: BalancePanelProps) {
+export function BalancePanel({
+  toasts,
+  onAfterAction,
+  demoMode = false,
+}: BalancePanelProps) {
   const { address } = useAccount();
   const { data: info, refetch } = useMemberInfo(address);
-  const { data: isMemberRaw } = useCampfireRead("isMember", [address ?? "0x0"], !!address);
-  const isMember = !!isMemberRaw;
+  const { data: isMemberRaw } = useCampfireRead(
+    "isMember",
+    [address ?? "0x0"],
+    !!address && !demoMode,
+  );
+  const isMember = demoMode ? true : !!isMemberRaw;
   const expiryDuration = useCampfireRead("EXPIRY_DURATION", []);
 
   const tx = useTx();
 
-  const balance = info?.[1];
-  const lastActivityAt = info?.[2];
-  const expiresIn = info?.[3];
+  // In demo mode, use placeholder data.
+  const balance = demoMode ? DEMO_BALANCE.balance : info?.[1];
+  const lastActivityAt = demoMode
+    ? DEMO_BALANCE.lastActivityAt
+    : info?.[2];
+  const expiresIn = demoMode
+    ? BigInt(60n * 60n * 18n) // 18h left in demo
+    : info?.[3];
 
-  if (!address) {
+  if (!demoMode && !address) {
     return (
       <section className="panel">
         <div className="panel__head">
@@ -39,7 +57,7 @@ export function BalancePanel({ toasts, onAfterAction }: BalancePanelProps) {
     );
   }
 
-  if (!isMember) {
+  if (!demoMode && !isMember) {
     return (
       <section className="panel">
         <div className="panel__head">
@@ -61,11 +79,15 @@ export function BalancePanel({ toasts, onAfterAction }: BalancePanelProps) {
       ? "balance__expiry--warning"
       : "";
 
+  const displayAddress = demoMode ? DEMO_VIEWER_ADDRESS : address;
+
   return (
     <section className="panel">
       <div className="panel__head">
         <h3 className="panel__title">Local credits</h3>
-        <span className="panel__hint">non-tradable</span>
+        <span className="panel__hint">
+          {demoMode ? "demo" : "non-tradable"}
+        </span>
       </div>
 
       <div className="balance">
@@ -76,11 +98,15 @@ export function BalancePanel({ toasts, onAfterAction }: BalancePanelProps) {
 
         <div className="balance__row">
           <span>MON gas</span>
-          <b>see wallet</b>
+          <b>{demoMode ? "—" : "see wallet"}</b>
         </div>
         <div className="balance__row">
           <span>Last activity</span>
-          <b>{lastActivityAt ? new Date(Number(lastActivityAt) * 1000).toLocaleString() : "—"}</b>
+          <b>
+            {lastActivityAt
+              ? new Date(Number(lastActivityAt) * 1000).toLocaleString()
+              : "—"}
+          </b>
         </div>
 
         <div className={`balance__expiry ${expiryClass}`}>
@@ -93,13 +119,17 @@ export function BalancePanel({ toasts, onAfterAction }: BalancePanelProps) {
             <>
               Expires in <b>{formatSecondsLeft(expiresIn)}</b> of inactivity.
               The contract revokes the full balance once the{" "}
-              {Number(expiryDuration.data ?? 0n) === 0 ? "fixed" : Number(expiryDuration.data) / 3600 + "h"}{" "}
+              {demoMode
+                ? "24h"
+                : Number(expiryDuration.data ?? 0n) === 0
+                  ? "fixed"
+                  : Number(expiryDuration.data) / 3600 + "h"}{" "}
               window passes without activity.
             </>
           )}
         </div>
 
-        {expired && (
+        {!demoMode && expired && (
           <button
             className="btn btn--danger btn--small"
             disabled={
@@ -133,7 +163,7 @@ export function BalancePanel({ toasts, onAfterAction }: BalancePanelProps) {
 
         <a
           className="link-explorer"
-          href={`${EXPLORERS.socialscan}/address/${address}`}
+          href={`${EXPLORERS.socialscan}/address/${displayAddress}`}
           target="_blank"
           rel="noreferrer noopener"
         >

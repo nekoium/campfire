@@ -8,6 +8,7 @@ import { TxPill } from "./CreateTaskForm";
 interface TransferFormProps {
   toasts: ToastApi;
   onTransferred?: () => void;
+  demoMode?: boolean;
 }
 
 /**
@@ -15,10 +16,18 @@ interface TransferFormProps {
  * sender and recipient are members. Self-transfer is blocked client-side to
  * avoid a pointless wallet prompt.
  */
-export function TransferForm({ toasts, onTransferred }: TransferFormProps) {
+export function TransferForm({
+  toasts,
+  onTransferred,
+  demoMode = false,
+}: TransferFormProps) {
   const { address } = useAccount();
-  const { data: isMemberRaw } = useCampfireRead("isMember", [address ?? "0x0"], !!address);
-  const isMember = !!isMemberRaw;
+  const { data: isMemberRaw } = useCampfireRead(
+    "isMember",
+    [address ?? "0x0"],
+    !!address && !demoMode,
+  );
+  const isMember = demoMode ? true : !!isMemberRaw;
 
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
@@ -38,6 +47,15 @@ export function TransferForm({ toasts, onTransferred }: TransferFormProps) {
     amountRaw > 0n;
 
   const submit = async () => {
+    if (demoMode) {
+      toasts.push({
+        kind: "info",
+        title: "Demo mode",
+        message:
+          "Connect a wallet and deploy the contract to transfer real credits.",
+      });
+      return;
+    }
     if (!valid || busy) return;
     await tx.run({
       functionName: "transferCredits",
@@ -104,7 +122,11 @@ export function TransferForm({ toasts, onTransferred }: TransferFormProps) {
             gap: "var(--space-3)",
           }}
         >
-          <TxPill status={tx.status} />
+          {demoMode ? (
+            <span className="tiny muted">Demo mode — transfers disabled</span>
+          ) : (
+            <TxPill status={tx.status} />
+          )}
           <span className="tiny muted">
             Credits are local and non-tradable. Recipient must be a member.
           </span>
