@@ -30,6 +30,16 @@ The second meaning exists inside the first. This preserves a flatter hierarchy b
 
 A community official or council is not hidden behind private admin logic. Their historical actions can be seen as part of the public record of the community entity.
 
+## Currency Creation and Disposal
+
+Campfire treats the community as a kind of faucet.
+
+When someone performs useful labor for the community, the community entity can issue internal credits to them. Those credits are not meant to be traded as a global asset. They are a local unit of exchange for work, help, and contribution inside the community.
+
+Credits are designed to move through the community rather than sit idle. A credit balance that remains unused beyond the fixed expiry period is automatically revocable by the contract. The rule is part of the system and does not require a later community decision; anyone can trigger the expiry check once the deadline has passed.
+
+The important point is that the token must be earned through actual contribution, not bought as another currency. In the first prototype, the credit is an internal ledger unit rather than a freely transferable ERC-20, so it does not become an external speculative asset.
+
 ## Core Rules
 
 - communities are invited and bounded
@@ -38,6 +48,7 @@ A community official or council is not hidden behind private admin logic. Their 
 - value stays local to the community unless two communities explicitly agree to interact
 - the system supports cooperation, not speculation
 - reputation matters socially, not only economically
+- credits are created in exchange for labor and automatically revocable after the fixed inactivity period
 
 ## Early Product Shape
 
