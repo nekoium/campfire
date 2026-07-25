@@ -34,7 +34,7 @@ export default function App() {
 
         <div className="topbar__meta">
           <span className="topbar__chain-tag">{monadTestnet.name}</span>
-          <WalletBar />
+          <WalletBar toasts={toasts} />
           {view === "intro" && (
             <button
               className="btn btn--ghost btn--small"

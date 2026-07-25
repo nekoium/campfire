@@ -483,6 +483,17 @@ img {
   color: var(--color-ink);
 }
 
+.walletbar__hint {
+  color: var(--color-ink-soft);
+  max-width: 220px;
+  line-height: 1.4;
+}
+
+.walletbar__hint a {
+  color: var(--color-botanical);
+  text-decoration: underline;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }
